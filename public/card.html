@@ -420,29 +420,75 @@
       section.classList.toggle('show');
     }
 
+    function escapeVcardValue(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/\\/g, '\\\\')
+        .replace(/;/g, '\\;')
+        .replace(/,/g, '\\,')
+        .replace(/\n/g, '\\n')
+        .replace(/\r/g, '');
+    }
+
     function saveContact() {
       if (!currentCard) return;
       
-      const vcard = [
-        'BEGIN:VCARD',
-        'VERSION:3.0',
-        'N:' + currentCard.name,
-        'FN:' + currentCard.name,
-        currentCard.position ? 'TITLE:' + currentCard.position : '',
-        currentCard.company ? 'ORG:' + currentCard.company : '',
-        currentCard.phone ? 'TEL:' + currentCard.phone : '',
-        currentCard.email ? 'EMAIL:' + currentCard.email : '',
-        currentCard.address ? 'ADR:' + currentCard.address : '',
-        'END:VCARD'
-      ].filter(Boolean).join('\n');
-
-      const blob = new Blob([vcard], { type: 'text/vcard' });
+      const lines = [];
+      lines.push('BEGIN:VCARD');
+      lines.push('VERSION:3.0');
+      lines.push('PRODID:-//E-Card System//E-Card Generator//CN');
+      
+      const name = escapeVcardValue(currentCard.name);
+      lines.push(`N;CHARSET=utf-8:${name};;;;`);
+      lines.push(`FN;CHARSET=utf-8:${name}`);
+      
+      if (currentCard.position) {
+        lines.push(`TITLE;CHARSET=utf-8:${escapeVcardValue(currentCard.position)}`);
+      }
+      
+      if (currentCard.company) {
+        lines.push(`ORG;CHARSET=utf-8:${escapeVcardValue(currentCard.company)};`);
+      }
+      
+      if (currentCard.phone) {
+        lines.push(`TEL;TYPE=WORK,VOICE,CELL:${escapeVcardValue(currentCard.phone)}`);
+      }
+      
+      if (currentCard.email) {
+        lines.push(`EMAIL;TYPE=WORK,INTERNET:${escapeVcardValue(currentCard.email)}`);
+      }
+      
+      if (currentCard.address) {
+        const addr = escapeVcardValue(currentCard.address);
+        lines.push(`ADR;TYPE=WORK;CHARSET=utf-8:;;${addr};;;;`);
+      }
+      
+      if (currentCard.wechat) {
+        lines.push(`X-WECHAT;CHARSET=utf-8:${escapeVcardValue(currentCard.wechat)}`);
+      }
+      
+      if (currentCard.bio) {
+        lines.push(`NOTE;CHARSET=utf-8:${escapeVcardValue(currentCard.bio)}`);
+      }
+      
+      const cardUrl = window.location.href.split('?')[0];
+      lines.push(`URL;TYPE=WORK:${cardUrl}`);
+      
+      lines.push('REV:' + new Date().toISOString().replace(/[-:.]/g, '').replace(/\.\d{3}Z$/, 'Z'));
+      lines.push('END:VCARD');
+      
+      const vcardString = lines.join('\r\n');
+      
+      const BOM = '\uFEFF';
+      const blob = new Blob([BOM + vcardString], { type: 'text/vcard;charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
       a.download = currentCard.name + '.vcf';
+      document.body.appendChild(a);
       a.click();
-      URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
 
     async function exportCard(type) {
