@@ -1,0 +1,1201 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>电子名片管理系统</title>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f8fafc;
+      color: #1e293b;
+      min-height: 100vh;
+    }
+    .auth-container {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      padding: 20px;
+    }
+    .auth-box {
+      background: white;
+      padding: 40px;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+      width: 100%;
+      max-width: 400px;
+    }
+    .auth-box h1 { text-align: center; margin-bottom: 8px; font-size: 28px; }
+    .auth-box .subtitle { text-align: center; color: #64748b; margin-bottom: 30px; font-size: 14px; }
+    .form-group { margin-bottom: 18px; }
+    .form-group label { display: block; margin-bottom: 6px; font-size: 14px; font-weight: 500; }
+    .form-group input, .form-group textarea, .form-group select {
+      width: 100%; padding: 12px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;
+    }
+    .form-group input:focus, .form-group textarea:focus, .form-group select:focus {
+      outline: none; border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
+    }
+    .btn {
+      width: 100%; padding: 12px; background: #6366f1; color: white; border: none;
+      border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer;
+    }
+    .btn:hover { background: #4f46e5; }
+    .btn-secondary { background: #f1f5f9; color: #334155; }
+    .btn-secondary:hover { background: #e2e8f0; }
+    .btn-danger { background: #ef4444; }
+    .btn-sm { padding: 8px 16px; font-size: 14px; width: auto; }
+    .auth-switch { text-align: center; margin-top: 20px; font-size: 14px; color: #64748b; }
+    .auth-switch a { color: #6366f1; cursor: pointer; font-weight: 500; }
+    .app-container { display: none; }
+    .sidebar {
+      position: fixed; left: 0; top: 0; width: 240px; height: 100vh;
+      background: white; border-right: 1px solid #e2e8f0; display: flex; flex-direction: column;
+    }
+    .sidebar-header { padding: 24px 20px; border-bottom: 1px solid #e2e8f0; }
+    .sidebar-header h2 { font-size: 20px; color: #6366f1; }
+    .sidebar-nav { flex: 1; padding: 16px 12px; }
+    .nav-item {
+      display: flex; align-items: center; gap: 12px; padding: 12px 16px;
+      border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500;
+      color: #475569; margin-bottom: 4px; transition: all 0.2s;
+    }
+    .nav-item:hover { background: #f1f5f9; }
+    .nav-item.active { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+    .nav-icon { font-size: 18px; }
+    .sidebar-footer { padding: 16px; border-top: 1px solid #e2e8f0; }
+    .user-info { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .user-avatar {
+      width: 40px; height: 40px; border-radius: 50%;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white; display: flex; align-items: center; justify-content: center; font-weight: 600;
+    }
+    .user-name { font-weight: 600; font-size: 14px; }
+    .logout-btn {
+      width: 100%; padding: 10px; background: #f1f5f9; border: none;
+      border-radius: 8px; cursor: pointer; font-size: 14px; color: #64748b;
+    }
+    .logout-btn:hover { background: #e2e8f0; }
+    .main-content { margin-left: 240px; padding: 30px; }
+    .page { display: none; }
+    .page.active { display: block; }
+    .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+    .page-title { font-size: 24px; font-weight: 700; }
+    .card-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+    .card-item {
+      background: white; border-radius: 12px; padding: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06); cursor: pointer;
+      transition: all 0.2s; position: relative;
+    }
+    .card-item:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.1); }
+    .card-item-name { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+    .card-item-position { color: #64748b; font-size: 14px; margin-bottom: 4px; }
+    .card-item-company { font-size: 14px; font-weight: 500; color: #6366f1; }
+    .card-item-actions {
+      position: absolute; top: 12px; right: 12px; display: none; gap: 6px;
+    }
+    .card-item:hover .card-item-actions { display: flex; }
+    .icon-btn {
+      width: 32px; height: 32px; border-radius: 6px; border: none;
+      cursor: pointer; font-size: 14px; background: #f1f5f9;
+    }
+    .icon-btn:hover { background: #e2e8f0; }
+    .add-card-btn {
+      border: 2px dashed #cbd5e1; display: flex; align-items: center;
+      justify-content: center; flex-direction: column; min-height: 140px;
+      color: #64748b; font-size: 14px; gap: 8px; cursor: pointer;
+    }
+    .add-card-btn .plus { font-size: 36px; color: #94a3b8; }
+    .modal-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5); display: none; align-items: center;
+      justify-content: center; z-index: 1000; padding: 20px;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal {
+      background: white; border-radius: 12px; width: 100%;
+      max-width: 900px; max-height: 90vh; overflow-y: auto;
+    }
+    .modal-header {
+      padding: 20px 24px; border-bottom: 1px solid #e2e8f0;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .modal-title { font-size: 18px; font-weight: 600; }
+    .modal-close {
+      background: none; border: none; font-size: 24px; cursor: pointer; color: #64748b;
+    }
+    .modal-body { padding: 24px; }
+    .designer-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+    .template-selector {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px;
+    }
+    .template-option {
+      padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px;
+      cursor: pointer; text-align: center; font-size: 12px; transition: all 0.2s;
+    }
+    .template-option.active { border-color: #6366f1; background: rgba(99,102,241,0.05); }
+    .template-preview { height: 40px; border-radius: 4px; margin-bottom: 6px; }
+    .upload-area { display: flex; gap: 12px; margin-bottom: 16px; }
+    .upload-box {
+      flex: 1; border: 2px dashed #e2e8f0; border-radius: 8px;
+      padding: 16px; text-align: center; cursor: pointer; transition: all 0.2s;
+    }
+    .upload-box:hover { border-color: #6366f1; background: rgba(99,102,241,0.02); }
+    .upload-box img { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; margin-bottom: 8px; }
+    .upload-box p { font-size: 12px; color: #64748b; }
+    .preview-section { position: sticky; top: 30px; }
+    .card-preview {
+      width: 100%; max-width: 320px; margin: 0 auto; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+    }
+    .card-preview-header {
+      padding: 30px 20px 24px; text-align: center; color: white;
+    }
+    .card-avatar {
+      width: 70px; height: 70px; border-radius: 50%; margin: 0 auto 10px;
+      background: rgba(255,255,255,0.2); display: flex; align-items: center;
+      justify-content: center; font-size: 24px; color: white; overflow: hidden; border: 2px solid rgba(255,255,255,0.4);
+    }
+    .card-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .card-name { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+    .card-position { font-size: 13px; opacity: 0.9; margin-bottom: 2px; }
+    .card-company { font-size: 14px; font-weight: 600; opacity: 0.95; }
+    .card-preview-body { padding: 20px 22px 24px; background: white; }
+    .card-divider { height: 1px; background: #f1f5f9; margin: 12px 0; }
+    .card-info-item {
+      display: flex; align-items: center; gap: 10px; padding: 8px 0; font-size: 13px; color: #1e293b;
+    }
+    .card-info-icon {
+      width: 28px; height: 28px; border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; color: white; flex-shrink: 0;
+    }
+    .card-bio {
+      font-size: 12px; color: #6b7280; line-height: 1.6;
+      margin-top: 12px; padding-top: 12px; border-top: 1px solid #f1f5f9;
+    }
+    .card-logo { text-align: center; margin-top: 14px; }
+    .card-logo img { max-height: 32px; max-width: 100px; }
+    .actions-row { display: flex; gap: 10px; margin-top: 20px; justify-content: center; }
+    .actions-row .btn { width: auto; padding: 10px 20px; font-size: 14px; }
+    .folder-layout { display: grid; grid-template-columns: 200px 1fr; gap: 24px; }
+    .folder-sidebar { background: white; border-radius: 12px; padding: 16px; height: fit-content; }
+    .folder-group-item {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 12px; border-radius: 8px; cursor: pointer; font-size: 14px; margin-bottom: 4px;
+    }
+    .folder-group-item:hover { background: #f1f5f9; }
+    .folder-group-item.active { background: rgba(99,102,241,0.1); color: #6366f1; font-weight: 500; }
+    .group-color-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 8px; }
+    .search-box { margin-bottom: 20px; }
+    .search-box input {
+      width: 100%; padding: 12px 16px; border: 1px solid #e2e8f0;
+      border-radius: 10px; font-size: 14px; background: white;
+    }
+    .search-box input:focus { outline: none; border-color: #6366f1; }
+    .add-group-btn {
+      width: 100%; padding: 10px; margin-top: 10px; border: 1px dashed #e2e8f0;
+      background: none; border-radius: 8px; cursor: pointer; font-size: 13px; color: #64748b;
+    }
+    .logs-table {
+      width: 100%; background: white; border-radius: 12px;
+      overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .logs-table table { width: 100%; border-collapse: collapse; }
+    .logs-table th {
+      background: #f8fafc; padding: 14px 16px; text-align: left;
+      font-size: 13px; font-weight: 600; color: #475569; border-bottom: 1px solid #e2e8f0;
+    }
+    .logs-table td {
+      padding: 14px 16px; font-size: 14px; border-bottom: 1px solid #e2e8f0;
+    }
+    .logs-table tr:last-child td { border-bottom: none; }
+    .stat-cards {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px;
+    }
+    .stat-card {
+      background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .stat-label { font-size: 13px; color: #64748b; margin-bottom: 8px; }
+    .stat-value { font-size: 28px; font-weight: 700; color: #6366f1; }
+    .qr-code-modal { text-align: center; }
+    .qr-code-img { width: 180px; height: 180px; margin: 16px auto; }
+    .qr-code-img img { width: 100%; height: 100%; }
+    .card-link {
+      background: #f8fafc; padding: 12px; border-radius: 8px;
+      font-size: 13px; word-break: break-all; margin: 16px 0; color: #6366f1;
+    }
+    .toast {
+      position: fixed; top: 20px; right: 20px; padding: 14px 20px;
+      background: #10b981; color: white; border-radius: 8px;
+      z-index: 2000; animation: slideIn 0.3s ease; font-size: 14px;
+    }
+    .toast.error { background: #ef4444; }
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    .empty-state { text-align: center; padding: 60px 20px; color: #94a3b8; }
+    .empty-state-icon { font-size: 48px; margin-bottom: 16px; }
+    .empty-state-text { font-size: 15px; }
+    .folder-card-item {
+      background: white; border-radius: 12px; padding: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06); display: flex; align-items: center; gap: 14px;
+    }
+    .folder-card-avatar {
+      width: 48px; height: 48px; border-radius: 50%;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white; display: flex; align-items: center; justify-content: center;
+      font-weight: 600; font-size: 16px; flex-shrink: 0; overflow: hidden;
+    }
+    .folder-card-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .folder-card-info { flex: 1; min-width: 0; }
+    .folder-card-name { font-weight: 600; font-size: 15px; margin-bottom: 2px; }
+    .folder-card-company { font-size: 13px; color: #64748b; }
+    .folder-card-actions { display: flex; gap: 6px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .mobile-header { display: none; }
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
+      .main-content { margin-left: 0; padding: 16px; }
+      .mobile-header {
+        display: flex; position: fixed; top: 0; left: 0; right: 0;
+        background: white; padding: 14px 16px; border-bottom: 1px solid #e2e8f0; z-index: 100;
+        justify-content: space-between; align-items: center;
+      }
+      .main-content { padding-top: 70px; }
+      .designer-layout { grid-template-columns: 1fr; }
+      .folder-layout { grid-template-columns: 1fr; }
+      .form-row { grid-template-columns: 1fr; }
+    }
+    .search-result-item {
+      display: flex; align-items: center; gap: 10px; padding: 10px;
+      border-bottom: 1px solid #f1f5f9; cursor: pointer;
+    }
+    .search-result-item:hover { background: #f8fafc; }
+    .search-result-avatar {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: linear-gradient(135deg,#667eea,#764ba2);
+      color: white; display: flex; align-items: center; justify-content: center;
+      font-weight: 600; font-size: 14px; overflow: hidden;
+    }
+    .search-result-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  </style>
+</head>
+<body>
+
+<div id="authPage" class="auth-container">
+  <div class="auth-box">
+    <h1>📇 电子名片</h1>
+    <p class="subtitle">设计你的专属名片，轻松交换联系方式</p>
+    <div id="loginForm">
+      <div class="form-group">
+        <label>用户名 / 邮箱</label>
+        <input type="text" id="loginUsername" placeholder="请输入用户名或邮箱">
+      </div>
+      <div class="form-group">
+        <label>密码</label>
+        <input type="password" id="loginPassword" placeholder="请输入密码">
+      </div>
+      <button class="btn" onclick="login()">登录</button>
+      <p class="auth-switch">还没有账号？<a onclick="showRegister()">立即注册</a></p>
+    </div>
+    <div id="registerForm" style="display:none">
+      <div class="form-group">
+        <label>用户名</label>
+        <input type="text" id="regUsername" placeholder="请输入用户名">
+      </div>
+      <div class="form-group">
+        <label>邮箱</label>
+        <input type="email" id="regEmail" placeholder="请输入邮箱">
+      </div>
+      <div class="form-group">
+        <label>密码</label>
+        <input type="password" id="regPassword" placeholder="至少6位">
+      </div>
+      <button class="btn" onclick="register()">注册</button>
+      <p class="auth-switch">已有账号？<a onclick="showLogin()">返回登录</a></p>
+    </div>
+  </div>
+</div>
+
+<div id="appPage" class="app-container">
+  <div class="mobile-header">
+    <strong>📇 名片管理</strong>
+    <button class="btn btn-sm btn-secondary" onclick="logout()">退出</button>
+  </div>
+
+  <div class="sidebar">
+    <div class="sidebar-header"><h2>📇 名片管理</h2></div>
+    <div class="sidebar-nav">
+      <div class="nav-item active" data-page="myCards" onclick="showPage('myCards')">
+        <span class="nav-icon">💳</span><span>我的名片</span>
+      </div>
+      <div class="nav-item" data-page="folder" onclick="showPage('folder')">
+        <span class="nav-icon">📁</span><span>名片夹</span>
+      </div>
+      <div class="nav-item" data-page="logs" onclick="showPage('logs')">
+        <span class="nav-icon">📊</span><span>访问统计</span>
+      </div>
+    </div>
+    <div class="sidebar-footer">
+      <div class="user-info">
+        <div class="user-avatar" id="userAvatar">U</div>
+        <div class="user-name" id="userName">用户</div>
+      </div>
+      <button class="logout-btn" onclick="logout()">退出登录</button>
+    </div>
+  </div>
+
+  <div class="main-content">
+    <div id="page-myCards" class="page active">
+      <div class="page-header">
+        <h1 class="page-title">我的名片</h1>
+        <button class="btn btn-sm" onclick="openDesigner()">+ 新建名片</button>
+      </div>
+      <div id="cardList" class="card-list"></div>
+    </div>
+
+    <div id="page-folder" class="page">
+      <div class="page-header">
+        <h1 class="page-title">名片夹</h1>
+        <button class="btn btn-sm" onclick="openAddToFolder()">+ 添加名片</button>
+      </div>
+      <div class="folder-layout">
+        <div class="folder-sidebar">
+          <div class="folder-group-item active" onclick="selectGroup(null)">
+            <span><span class="group-color-dot" style="background:#94a3b8"></span>全部</span>
+          </div>
+          <div id="groupList"></div>
+          <button class="add-group-btn" onclick="openAddGroup()">+ 新建分组</button>
+        </div>
+        <div>
+          <div class="search-box">
+            <input type="text" placeholder="搜索姓名或公司..." id="folderSearch" oninput="loadFolderCards()">
+          </div>
+          <div id="folderCards" class="card-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="page-logs" class="page">
+      <div class="page-header">
+        <h1 class="page-title">访问统计</h1>
+      </div>
+      <div class="stat-cards">
+        <div class="stat-card">
+          <div class="stat-label">总访问次数</div>
+          <div class="stat-value" id="totalViews">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">名片数量</div>
+          <div class="stat-value" id="cardCount">0</div>
+        </div>
+      </div>
+      <div class="logs-table">
+        <table>
+          <thead>
+            <tr><th>名片</th><th>访客IP</th><th>时间</th></tr>
+          </thead>
+          <tbody id="logsTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="designerModal" class="modal-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="designerTitle">设计名片</div>
+      <button class="modal-close" onclick="closeDesigner()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="designer-layout">
+        <div>
+          <h3 style="margin-bottom:12px;font-size:16px;">选择模板</h3>
+          <div class="template-selector" id="templateSelector"></div>
+          <div class="upload-area">
+            <div class="upload-box" onclick="document.getElementById('avatarInput').click()">
+              <img id="avatarPreview" src="" style="display:none">
+              <div id="avatarPlaceholder" style="font-size:22px;color:#94a3b8">👤</div>
+              <p>上传头像</p>
+              <input type="file" id="avatarInput" accept="image/*" style="display:none" onchange="previewAvatar(event)">
+            </div>
+            <div class="upload-box" onclick="document.getElementById('logoInput').click()">
+              <img id="logoPreview" src="" style="display:none">
+              <div id="logoPlaceholder" style="font-size:22px;color:#94a3b8">🏢</div>
+              <p>公司Logo</p>
+              <input type="file" id="logoInput" accept="image/*" style="display:none" onchange="previewLogo(event)">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>姓名 *</label>
+              <input type="text" id="formName" oninput="updatePreview()">
+            </div>
+            <div class="form-group">
+              <label>职位</label>
+              <input type="text" id="formPosition" oninput="updatePreview()">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>公司</label>
+            <input type="text" id="formCompany" oninput="updatePreview()">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>手机</label>
+              <input type="tel" id="formPhone" oninput="updatePreview()">
+            </div>
+            <div class="form-group">
+              <label>邮箱</label>
+              <input type="email" id="formEmail" oninput="updatePreview()">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>微信</label>
+              <input type="text" id="formWechat" oninput="updatePreview()">
+            </div>
+            <div class="form-group">
+              <label>地址</label>
+              <input type="text" id="formAddress" oninput="updatePreview()">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>个人简介</label>
+            <textarea id="formBio" rows="3" oninput="updatePreview()"></textarea>
+          </div>
+          <div class="form-group">
+            <label style="display:flex;align-items:center;gap:6px;font-weight:400">
+              <input type="checkbox" id="formPublic" checked style="width:auto">
+              公开可见
+            </label>
+          </div>
+          <button class="btn" onclick="saveCard()">保存名片</button>
+        </div>
+        <div class="preview-section">
+          <h3 style="margin-bottom:12px;font-size:16px;">实时预览</h3>
+          <div class="card-preview" id="cardPreview">
+            <div class="card-preview-header" id="previewHeader">
+              <div class="card-avatar" id="previewAvatar">
+                <span id="previewAvatarText">?</span>
+                <img id="previewAvatarImg" src="" style="display:none">
+              </div>
+              <div class="card-name" id="previewName">您的姓名</div>
+              <div class="card-position" id="previewPosition">职位</div>
+              <div class="card-company" id="previewCompany">公司名称</div>
+            </div>
+            <div class="card-preview-body">
+              <div id="previewInfo"></div>
+              <div class="card-bio" id="previewBio" style="display:none"></div>
+              <div class="card-logo" id="previewLogo" style="display:none">
+                <img id="previewLogoImg" src="">
+              </div>
+            </div>
+          </div>
+          <div class="actions-row">
+            <button class="btn btn-secondary btn-sm" onclick="exportPreview('image')">导出图片</button>
+            <button class="btn btn-secondary btn-sm" onclick="exportPreview('pdf')">导出PDF</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="qrModal" class="modal-overlay">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header">
+      <div class="modal-title">名片二维码</div>
+      <button class="modal-close" onclick="closeQrModal()">&times;</button>
+    </div>
+    <div class="modal-body qr-code-modal">
+      <div class="qr-code-img" id="qrCodeImg"></div>
+      <div class="card-link" id="cardLink"></div>
+      <div class="actions-row">
+        <button class="btn btn-secondary btn-sm" onclick="copyLink()">复制链接</button>
+        <button class="btn btn-sm" onclick="openCardPage()">查看名片</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="addFolderModal" class="modal-overlay">
+  <div class="modal" style="max-width:450px">
+    <div class="modal-header">
+      <div class="modal-title">添加名片到名片夹</div>
+      <button class="modal-close" onclick="closeAddFolder()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>搜索名片（姓名/公司/邮箱/手机）</label>
+        <input type="text" id="searchCardInput" placeholder="输入关键词搜索..." oninput="searchCards()">
+      </div>
+      <div id="searchResults" style="max-height:200px;overflow-y:auto;margin-bottom:16px"></div>
+      <div style="border-top:1px solid #e2e8f0;padding-top:16px">
+        <div class="form-group">
+          <label>或输入名片链接 / Slug</label>
+          <input type="text" id="cardSlugInput" placeholder="例如：zhang-san-abc123">
+        </div>
+        <div class="form-group">
+          <label>选择分组</label>
+          <select id="addToGroupSelect"></select>
+        </div>
+        <button class="btn" onclick="addCardToFolder()">添加</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="addGroupModal" class="modal-overlay">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header">
+      <div class="modal-title">新建分组</div>
+      <button class="modal-close" onclick="closeAddGroup()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>分组名称</label>
+        <input type="text" id="newGroupName" placeholder="例如：合作伙伴">
+      </div>
+      <div class="form-group">
+        <label>颜色</label>
+        <input type="color" id="newGroupColor" value="#3b82f6" style="height:40px;padding:4px;width:100%">
+      </div>
+      <button class="btn" onclick="createGroup()">创建</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API_BASE = '/api';
+let currentUser = null;
+let editingCardId = null;
+let editingCardSlug = null;
+let selectedTemplate = 'classic';
+let selectedGroupId = null;
+let currentCardSlug = null;
+
+const templates = [
+  { id: 'classic', name: '经典紫', gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', iconBg: '#667eea' },
+  { id: 'modern', name: '清新绿', gradient: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)', iconBg: '#11998e' },
+  { id: 'elegant', name: '商务灰', gradient: 'linear-gradient(135deg, #2c3e50 0%, #4a5568 100%)', iconBg: '#2c3e50' },
+  { id: 'warm', name: '暖粉色', gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', iconBg: '#f5576c' },
+  { id: 'ocean', name: '海洋蓝', gradient: 'linear-gradient(135deg, #0093E9 0%, #80D0C7 100%)', iconBg: '#0093E9' },
+  { id: 'sunset', name: '彩虹色', gradient: 'linear-gradient(135deg, #FA8BFF 0%, #2BD2FF 50%, #2BFF88 100%)', iconBg: '#FA8BFF' }
+];
+
+function getTemplate(id) {
+  return templates.find(t => t.id === id) || templates[0];
+}
+
+function showToast(message, type = 'success') {
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 3000);
+}
+
+function getToken() { return localStorage.getItem('token'); }
+function setToken(token) { localStorage.setItem('token', token); }
+
+async function apiRequest(url, options = {}) {
+  const headers = { 'Content-Type': 'application/json', ...options.headers };
+  const token = getToken();
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  if (options.body instanceof FormData) delete headers['Content-Type'];
+  try {
+    const res = await fetch(API_BASE + url, { ...options, headers });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || '请求失败');
+    return data;
+  } catch (err) {
+    showToast(err.message, 'error');
+    throw err;
+  }
+}
+
+function showLogin() {
+  document.getElementById('loginForm').style.display = 'block';
+  document.getElementById('registerForm').style.display = 'none';
+}
+function showRegister() {
+  document.getElementById('loginForm').style.display = 'none';
+  document.getElementById('registerForm').style.display = 'block';
+}
+
+async function login() {
+  const username = document.getElementById('loginUsername').value;
+  const password = document.getElementById('loginPassword').value;
+  if (!username || !password) { showToast('请填写用户名和密码', 'error'); return; }
+  try {
+    const data = await apiRequest('/auth/login', { method: 'POST', body: JSON.stringify({ username, password }) });
+    setToken(data.token);
+    currentUser = data.user;
+    showApp();
+  } catch (err) {}
+}
+
+async function register() {
+  const username = document.getElementById('regUsername').value;
+  const email = document.getElementById('regEmail').value;
+  const password = document.getElementById('regPassword').value;
+  if (!username || !email || !password) { showToast('请填写所有字段', 'error'); return; }
+  try {
+    const data = await apiRequest('/auth/register', { method: 'POST', body: JSON.stringify({ username, email, password }) });
+    setToken(data.token);
+    currentUser = data.user;
+    showApp();
+  } catch (err) {}
+}
+
+function logout() {
+  localStorage.removeItem('token');
+  currentUser = null;
+  document.getElementById('authPage').style.display = 'flex';
+  document.getElementById('appPage').style.display = 'none';
+}
+
+async function showApp() {
+  document.getElementById('authPage').style.display = 'none';
+  document.getElementById('appPage').style.display = 'block';
+  if (!currentUser) {
+    try {
+      const data = await apiRequest('/auth/me');
+      currentUser = data.user;
+    } catch (err) { logout(); return; }
+  }
+  document.getElementById('userName').textContent = currentUser.username;
+  document.getElementById('userAvatar').textContent = currentUser.username.charAt(0).toUpperCase();
+  initTemplates();
+  loadMyCards();
+}
+
+function showPage(pageName) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + pageName).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelector(`.nav-item[data-page="${pageName}"]`)?.classList.add('active');
+  if (pageName === 'folder') { loadGroups(); loadFolderCards(); }
+  else if (pageName === 'logs') { loadLogs(); }
+}
+
+function initTemplates() {
+  const selector = document.getElementById('templateSelector');
+  selector.innerHTML = templates.map(t => `
+    <div class="template-option ${t.id === selectedTemplate ? 'active' : ''}" onclick="selectTemplate('${t.id}')">
+      <div class="template-preview" style="background:${t.gradient}"></div>${t.name}
+    </div>
+  `).join('');
+}
+
+function selectTemplate(id) {
+  selectedTemplate = id;
+  initTemplates();
+  updatePreview();
+}
+
+async function loadMyCards() {
+  try {
+    const data = await apiRequest('/cards/my');
+    const list = document.getElementById('cardList');
+    if (data.cards.length === 0) {
+      list.innerHTML = `<div class="card-item add-card-btn" onclick="openDesigner()">
+        <div class="plus">+</div><div>创建你的第一张名片</div></div>`;
+      return;
+    }
+    list.innerHTML = data.cards.map(card => `
+      <div class="card-item" onclick="editCard(${card.id})">
+        <div class="card-item-actions">
+          <button class="icon-btn" onclick="event.stopPropagation(); showQrCode('${card.slug}')" title="二维码">📱</button>
+          <button class="icon-btn" onclick="event.stopPropagation(); window.open('/card/${card.slug}', '_blank')" title="预览">👁</button>
+          <button class="icon-btn" onclick="event.stopPropagation(); exportCard('${card.slug}', 'image')" title="导出图片">🖼</button>
+          <button class="icon-btn" onclick="event.stopPropagation(); exportCard('${card.slug}', 'pdf')" title="导出PDF">📄</button>
+          <button class="icon-btn" onclick="event.stopPropagation(); deleteCard(${card.id})" title="删除">🗑</button>
+        </div>
+        <div class="card-item-name">${card.name}</div>
+        <div class="card-item-position">${card.position || '—'}</div>
+        <div class="card-item-company">${card.company || ''}</div>
+      </div>
+    `).join('') + `<div class="card-item add-card-btn" onclick="openDesigner()">
+      <div class="plus">+</div><div>新建名片</div></div>`;
+  } catch (err) {}
+}
+
+function openDesigner() {
+  editingCardId = null;
+  editingCardSlug = null;
+  selectedTemplate = 'classic';
+  document.getElementById('designerTitle').textContent = '新建名片';
+  ['formName','formPosition','formCompany','formPhone','formEmail','formWechat','formAddress','formBio']
+    .forEach(id => document.getElementById(id).value = '');
+  document.getElementById('formPublic').checked = true;
+  document.getElementById('avatarPreview').style.display = 'none';
+  document.getElementById('avatarPlaceholder').style.display = 'block';
+  document.getElementById('logoPreview').style.display = 'none';
+  document.getElementById('logoPlaceholder').style.display = 'block';
+  document.getElementById('avatarInput').value = '';
+  document.getElementById('logoInput').value = '';
+  initTemplates();
+  updatePreview();
+  document.getElementById('designerModal').classList.add('active');
+}
+
+async function editCard(id) {
+  try {
+    const data = await apiRequest('/cards/id/' + id);
+    const card = data.card;
+    editingCardId = id;
+    editingCardSlug = card.slug;
+    selectedTemplate = card.template || 'classic';
+    document.getElementById('designerTitle').textContent = '编辑名片';
+    document.getElementById('formName').value = card.name || '';
+    document.getElementById('formPosition').value = card.position || '';
+    document.getElementById('formCompany').value = card.company || '';
+    document.getElementById('formPhone').value = card.phone || '';
+    document.getElementById('formEmail').value = card.email || '';
+    document.getElementById('formWechat').value = card.wechat || '';
+    document.getElementById('formAddress').value = card.address || '';
+    document.getElementById('formBio').value = card.bio || '';
+    document.getElementById('formPublic').checked = card.is_public === 1;
+    if (card.avatar) {
+      document.getElementById('avatarPreview').src = '/uploads/' + card.avatar;
+      document.getElementById('avatarPreview').style.display = 'block';
+      document.getElementById('avatarPlaceholder').style.display = 'none';
+    } else {
+      document.getElementById('avatarPreview').style.display = 'none';
+      document.getElementById('avatarPlaceholder').style.display = 'block';
+    }
+    if (card.logo) {
+      document.getElementById('logoPreview').src = '/uploads/' + card.logo;
+      document.getElementById('logoPreview').style.display = 'block';
+      document.getElementById('logoPlaceholder').style.display = 'none';
+    } else {
+      document.getElementById('logoPreview').style.display = 'none';
+      document.getElementById('logoPlaceholder').style.display = 'block';
+    }
+    initTemplates();
+    updatePreview();
+    document.getElementById('designerModal').classList.add('active');
+  } catch (err) {}
+}
+
+function closeDesigner() {
+  document.getElementById('designerModal').classList.remove('active');
+}
+
+function previewAvatar(event) {
+  const file = event.target.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = e => {
+      document.getElementById('avatarPreview').src = e.target.result;
+      document.getElementById('avatarPreview').style.display = 'block';
+      document.getElementById('avatarPlaceholder').style.display = 'none';
+      updatePreview();
+    };
+    reader.readAsDataURL(file);
+  }
+}
+
+function previewLogo(event) {
+  const file = event.target.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = e => {
+      document.getElementById('logoPreview').src = e.target.result;
+      document.getElementById('logoPreview').style.display = 'block';
+      document.getElementById('logoPlaceholder').style.display = 'none';
+      updatePreview();
+    };
+    reader.readAsDataURL(file);
+  }
+}
+
+function updatePreview() {
+  const template = getTemplate(selectedTemplate);
+  const name = document.getElementById('formName').value || '您的姓名';
+  const position = document.getElementById('formPosition').value || '职位';
+  const company = document.getElementById('formCompany').value || '公司名称';
+  const phone = document.getElementById('formPhone').value;
+  const email = document.getElementById('formEmail').value;
+  const wechat = document.getElementById('formWechat').value;
+  const address = document.getElementById('formAddress').value;
+  const bio = document.getElementById('formBio').value;
+
+  document.getElementById('previewHeader').style.background = template.gradient;
+
+  document.getElementById('previewName').textContent = name;
+  document.getElementById('previewPosition').textContent = position;
+  document.getElementById('previewCompany').textContent = company;
+
+  const avatarImg = document.getElementById('previewAvatarImg');
+  const avatarText = document.getElementById('previewAvatarText');
+  const avatarPreview = document.getElementById('avatarPreview');
+  if (avatarPreview.style.display === 'block') {
+    avatarImg.src = avatarPreview.src;
+    avatarImg.style.display = 'block';
+    avatarText.style.display = 'none';
+  } else {
+    avatarImg.style.display = 'none';
+    avatarText.style.display = 'block';
+    avatarText.textContent = name.charAt(0);
+  }
+
+  let infoHtml = '';
+  if (phone) infoHtml += `<div class="card-info-item"><div class="card-info-icon" style="background:${template.iconBg}">📱</div><div>${phone}</div></div>`;
+  if (email) infoHtml += `<div class="card-info-item"><div class="card-info-icon" style="background:${template.iconBg}">📧</div><div>${email}</div></div>`;
+  if (wechat) infoHtml += `<div class="card-info-item"><div class="card-info-icon" style="background:${template.iconBg}">💬</div><div>${wechat}</div></div>`;
+  if (address) infoHtml += `<div class="card-info-item"><div class="card-info-icon" style="background:${template.iconBg}">📍</div><div>${address}</div></div>`;
+  document.getElementById('previewInfo').innerHTML = infoHtml;
+
+  const bioEl = document.getElementById('previewBio');
+  if (bio) { bioEl.textContent = bio; bioEl.style.display = 'block'; }
+  else bioEl.style.display = 'none';
+
+  const logoEl = document.getElementById('previewLogo');
+  const logoImg = document.getElementById('previewLogoImg');
+  const logoPreview = document.getElementById('logoPreview');
+  if (logoPreview.style.display === 'block') {
+    logoImg.src = logoPreview.src;
+    logoEl.style.display = 'block';
+  } else logoEl.style.display = 'none';
+}
+
+async function saveCard() {
+  const name = document.getElementById('formName').value.trim();
+  if (!name) { showToast('请输入姓名', 'error'); return; }
+
+  const formData = new FormData();
+  formData.append('name', name);
+  formData.append('position', document.getElementById('formPosition').value);
+  formData.append('company', document.getElementById('formCompany').value);
+  formData.append('phone', document.getElementById('formPhone').value);
+  formData.append('email', document.getElementById('formEmail').value);
+  formData.append('wechat', document.getElementById('formWechat').value);
+  formData.append('address', document.getElementById('formAddress').value);
+  formData.append('bio', document.getElementById('formBio').value);
+  formData.append('template', selectedTemplate);
+  formData.append('is_public', document.getElementById('formPublic').checked ? 1 : 0);
+
+  const avatarFile = document.getElementById('avatarInput').files[0];
+  if (avatarFile) formData.append('avatar', avatarFile);
+  const logoFile = document.getElementById('logoInput').files[0];
+  if (logoFile) formData.append('logo', logoFile);
+
+  try {
+    if (editingCardId) {
+      await apiRequest('/cards/' + editingCardId, { method: 'PUT', body: formData });
+      showToast('名片更新成功');
+    } else {
+      await apiRequest('/cards', { method: 'POST', body: formData });
+      showToast('名片创建成功');
+    }
+    closeDesigner();
+    loadMyCards();
+  } catch (err) {}
+}
+
+async function deleteCard(id) {
+  if (!confirm('确定要删除这张名片吗？')) return;
+  try {
+    await apiRequest('/cards/' + id, { method: 'DELETE' });
+    showToast('删除成功');
+    loadMyCards();
+  } catch (err) {}
+}
+
+async function showQrCode(slug) {
+  currentCardSlug = slug;
+  try {
+    const data = await apiRequest('/cards/' + slug + '/qrcode');
+    document.getElementById('qrCodeImg').innerHTML = `<img src="${data.qrcode}">`;
+    document.getElementById('cardLink').textContent = data.url;
+    document.getElementById('qrModal').classList.add('active');
+  } catch (err) {}
+}
+
+function closeQrModal() {
+  document.getElementById('qrModal').classList.remove('active');
+}
+
+function copyLink() {
+  navigator.clipboard.writeText(document.getElementById('cardLink').textContent);
+  showToast('链接已复制');
+}
+
+function openCardPage() {
+  window.open('/card/' + currentCardSlug, '_blank');
+}
+
+function exportCard(slug, type) {
+  window.open('/card/' + slug + '?export=' + type, '_blank');
+}
+
+async function exportPreview(type) {
+  const cardEl = document.getElementById('cardPreview');
+  if (!cardEl) {
+    showToast('无法导出', 'error');
+    return;
+  }
+  
+  try {
+    showToast('正在生成...', 'info');
+    const canvas = await html2canvas(cardEl, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#ffffff'
+    });
+    
+    if (type === 'image') {
+      const link = document.createElement('a');
+      link.download = '名片.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      showToast('图片导出成功');
+    } else if (type === 'pdf') {
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'px',
+        format: [canvas.width, canvas.height]
+      });
+      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, canvas.width, canvas.height);
+      pdf.save('名片.pdf');
+      showToast('PDF导出成功');
+    }
+  } catch (err) {
+    console.error(err);
+    showToast('导出失败: ' + err.message, 'error');
+  }
+}
+
+async function loadGroups() {
+  try {
+    const data = await apiRequest('/folder/groups');
+    const list = document.getElementById('groupList');
+    list.innerHTML = data.groups.map(g => `
+      <div class="folder-group-item ${selectedGroupId === g.id ? 'active' : ''}" onclick="selectGroup(${g.id})">
+        <span><span class="group-color-dot" style="background:${g.color}"></span>${g.name}</span>
+        <button class="icon-btn" onclick="event.stopPropagation(); deleteGroup(${g.id})" style="font-size:12px">×</button>
+      </div>
+    `).join('');
+    const select = document.getElementById('addToGroupSelect');
+    select.innerHTML = '<option value="">不分组</option>' +
+      data.groups.map(g => `<option value="${g.id}">${g.name}</option>`).join('');
+  } catch (err) {}
+}
+
+function selectGroup(id) {
+  selectedGroupId = id;
+  loadGroups();
+  loadFolderCards();
+}
+
+async function loadFolderCards() {
+  try {
+    let url = '/folder/cards';
+    const params = [];
+    if (selectedGroupId) params.push('group_id=' + selectedGroupId);
+    const keyword = document.getElementById('folderSearch')?.value;
+    if (keyword) params.push('keyword=' + encodeURIComponent(keyword));
+    if (params.length) url += '?' + params.join('&');
+
+    const data = await apiRequest(url);
+    const list = document.getElementById('folderCards');
+    if (data.cards.length === 0) {
+      list.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
+        <div class="empty-state-icon">📭</div>
+        <div class="empty-state-text">名片夹是空的，添加一些名片吧</div></div>`;
+      return;
+    }
+    list.innerHTML = data.cards.map(card => `
+      <div class="folder-card-item">
+        <div class="folder-card-avatar">
+          ${card.avatar ? `<img src="/uploads/${card.avatar}">` : card.name.charAt(0)}
+        </div>
+        <div class="folder-card-info">
+          <div class="folder-card-name">${card.name}</div>
+          <div class="folder-card-company">${card.company || card.position || ''}</div>
+        </div>
+        <div class="folder-card-actions">
+          <button class="icon-btn" onclick="window.open('/card/${card.slug}', '_blank')" title="查看">👁</button>
+          <button class="icon-btn" onclick="removeFromFolder(${card.folder_card_id})" title="移除">🗑</button>
+        </div>
+      </div>
+    `).join('');
+  } catch (err) {}
+}
+
+function openAddToFolder() {
+  document.getElementById('searchCardInput').value = '';
+  document.getElementById('cardSlugInput').value = '';
+  document.getElementById('searchResults').innerHTML = '';
+  loadGroups();
+  document.getElementById('addFolderModal').classList.add('active');
+}
+
+function closeAddFolder() {
+  document.getElementById('addFolderModal').classList.remove('active');
+}
+
+let searchTimeout = null;
+function searchCards() {
+  clearTimeout(searchTimeout);
+  const keyword = document.getElementById('searchCardInput').value;
+  if (!keyword.trim()) {
+    document.getElementById('searchResults').innerHTML = '';
+    return;
+  }
+  searchTimeout = setTimeout(async () => {
+    try {
+      const data = await apiRequest('/cards/search', {
+        method: 'POST',
+        body: JSON.stringify({ keyword })
+      });
+      const results = document.getElementById('searchResults');
+      if (data.cards.length === 0) {
+        results.innerHTML = '<p style="color:#94a3b8;text-align:center;padding:20px;font-size:13px">未找到相关名片</p>';
+        return;
+      }
+      results.innerHTML = data.cards.map(card => `
+        <div class="search-result-item" onclick="quickAddCard(${card.id})">
+          <div class="search-result-avatar">
+            ${card.avatar ? `<img src="/uploads/${card.avatar}">` : card.name.charAt(0)}
+          </div>
+          <div style="flex:1">
+            <div style="font-weight:500;font-size:14px">${card.name}</div>
+            <div style="font-size:12px;color:#64748b">${card.company || ''}</div>
+          </div>
+          <span style="font-size:12px;color:#6366f1">添加</span>
+        </div>
+      `).join('');
+    } catch (err) {}
+  }, 300);
+}
+
+async function quickAddCard(cardId) {
+  const groupId = document.getElementById('addToGroupSelect').value;
+  try {
+    await apiRequest('/folder/cards', {
+      method: 'POST',
+      body: JSON.stringify({ card_id: cardId, group_id: groupId || null })
+    });
+    showToast('添加成功');
+    closeAddFolder();
+    loadFolderCards();
+  } catch (err) {}
+}
+
+async function addCardToFolder() {
+  const slug = document.getElementById('cardSlugInput').value.trim();
+  const groupId = document.getElementById('addToGroupSelect').value;
+  if (!slug) { showToast('请输入名片链接或slug', 'error'); return; }
+  const slugMatch = slug.match(/\/card\/([^/\s]+)/) || slug.match(/([^/\s]+)$/);
+  const cleanSlug = slugMatch ? slugMatch[1] : slug;
+  try {
+    await apiRequest('/folder/cards', {
+      method: 'POST',
+      body: JSON.stringify({ slug: cleanSlug, group_id: groupId || null })
+    });
+    showToast('添加成功');
+    closeAddFolder();
+    loadFolderCards();
+  } catch (err) {}
+}
+
+async function removeFromFolder(id) {
+  if (!confirm('确定要从名片夹移除吗？')) return;
+  try {
+    await apiRequest('/folder/cards/' + id, { method: 'DELETE' });
+    showToast('已移除');
+    loadFolderCards();
+  } catch (err) {}
+}
+
+function openAddGroup() {
+  document.getElementById('newGroupName').value = '';
+  document.getElementById('newGroupColor').value = '#3b82f6';
+  document.getElementById('addGroupModal').classList.add('active');
+}
+
+function closeAddGroup() {
+  document.getElementById('addGroupModal').classList.remove('active');
+}
+
+async function createGroup() {
+  const name = document.getElementById('newGroupName').value.trim();
+  const color = document.getElementById('newGroupColor').value;
+  if (!name) { showToast('请输入分组名称', 'error'); return; }
+  try {
+    await apiRequest('/folder/groups', {
+      method: 'POST',
+      body: JSON.stringify({ name, color })
+    });
+    showToast('分组创建成功');
+    closeAddGroup();
+    loadGroups();
+  } catch (err) {}
+}
+
+async function deleteGroup(id) {
+  if (!confirm('确定删除该分组吗？分组下的名片不会被删除。')) return;
+  try {
+    await apiRequest('/folder/groups/' + id, { method: 'DELETE' });
+    showToast('分组已删除');
+    if (selectedGroupId === id) selectedGroupId = null;
+    loadGroups();
+    loadFolderCards();
+  } catch (err) {}
+}
+
+async function loadLogs() {
+  try {
+    const data = await apiRequest('/logs/my-cards');
+    let totalViews = 0;
+    let allLogs = [];
+    let cardCount = data.cards.length;
+    data.cards.forEach(card => {
+      totalViews += card.view_count;
+      card.logs.forEach(log => {
+        allLogs.push({ ...log, card_name: card.name });
+      });
+    });
+    allLogs.sort((a, b) => new Date(b.viewed_at) - new Date(a.viewed_at));
+    document.getElementById('totalViews').textContent = totalViews;
+    document.getElementById('cardCount').textContent = cardCount;
+    const tbody = document.getElementById('logsTableBody');
+    if (allLogs.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#94a3b8;padding:40px">暂无访问记录</td></tr>';
+      return;
+    }
+    tbody.innerHTML = allLogs.slice(0, 50).map(log => `
+      <tr>
+        <td>${log.card_name}</td>
+        <td>${log.viewer_ip || '未知'}</td>
+        <td>${formatTime(log.viewed_at)}</td>
+      </tr>
+    `).join('');
+  } catch (err) {}
+}
+
+function formatTime(timeStr) {
+  const d = new Date(timeStr);
+  return d.toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  if (getToken()) {
+    showApp();
+  }
+});
+</script>
+
+</body>
+</html>

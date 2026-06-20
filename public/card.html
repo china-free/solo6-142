@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>电子名片</title>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .card-container {
+      width: 100%;
+      max-width: 380px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    }
+
+    .card-header {
+      padding: 40px 30px 30px;
+      text-align: center;
+      color: white;
+    }
+
+    .avatar {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      margin: 0 auto 16px;
+      background: rgba(255,255,255,0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 36px;
+      overflow: hidden;
+      border: 3px solid rgba(255,255,255,0.4);
+    }
+
+    .avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .name {
+      font-size: 26px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .position {
+      font-size: 15px;
+      opacity: 0.9;
+      margin-bottom: 4px;
+    }
+
+    .company {
+      font-size: 16px;
+      font-weight: 600;
+      opacity: 0.95;
+    }
+
+    .card-body {
+      padding: 24px 28px 28px;
+    }
+
+    .info-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 0;
+      border-bottom: 1px solid #f1f5f9;
+      text-decoration: none;
+      color: inherit;
+      transition: all 0.2s;
+    }
+
+    .info-item:last-child {
+      border-bottom: none;
+    }
+
+    .info-item:hover {
+      background: #f8fafc;
+      margin: 0 -10px;
+      padding-left: 10px;
+      padding-right: 10px;
+      border-radius: 8px;
+    }
+
+    .info-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      color: white;
+      flex-shrink: 0;
+    }
+
+    .info-label {
+      font-size: 12px;
+      color: #94a3b8;
+      margin-bottom: 2px;
+    }
+
+    .info-value {
+      font-size: 15px;
+      font-weight: 500;
+      color: #1e293b;
+      word-break: break-all;
+    }
+
+    .bio {
+      margin-top: 20px;
+      padding: 16px;
+      background: #f8fafc;
+      border-radius: 12px;
+      font-size: 14px;
+      line-height: 1.7;
+      color: #475569;
+    }
+
+    .logo-section {
+      text-align: center;
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid #f1f5f9;
+    }
+
+    .logo-section img {
+      max-height: 48px;
+      max-width: 140px;
+    }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    .action-btn {
+      flex: 1;
+      padding: 14px;
+      border: none;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .action-btn.primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+
+    .action-btn.primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    .action-btn.secondary {
+      background: #f1f5f9;
+      color: #334155;
+    }
+
+    .action-btn.secondary:hover {
+      background: #e2e8f0;
+    }
+
+    .qrcode-section {
+      text-align: center;
+      margin-top: 24px;
+      padding: 20px;
+      background: #f8fafc;
+      border-radius: 12px;
+      display: none;
+    }
+
+    .qrcode-section.show {
+      display: block;
+    }
+
+    .qrcode-img {
+      width: 140px;
+      height: 140px;
+      margin: 0 auto 12px;
+      background: white;
+      padding: 10px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+
+    .qrcode-img img {
+      width: 100%;
+      height: 100%;
+    }
+
+    .qrcode-tip {
+      font-size: 13px;
+      color: #64748b;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 60px;
+      color: #94a3b8;
+    }
+
+    .error {
+      text-align: center;
+      padding: 60px;
+      color: #ef4444;
+    }
+
+    @media (max-width: 480px) {
+      .card-header {
+        padding: 30px 20px 24px;
+      }
+      .card-body {
+        padding: 20px 22px 24px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="card-container">
+    <div id="loading" class="loading">加载中...</div>
+    <div id="error" class="error" style="display:none">名片不存在</div>
+    
+    <div id="cardContent" style="display:none">
+      <div class="card" id="cardElement">
+        <div class="card-header" id="cardHeader">
+          <div class="avatar" id="avatar">
+            <span id="avatarText">?</span>
+            <img id="avatarImg" src="" style="display:none">
+          </div>
+          <div class="name" id="name"></div>
+          <div class="position" id="position"></div>
+          <div class="company" id="company"></div>
+        </div>
+        <div class="card-body">
+          <div id="infoList"></div>
+          <div class="bio" id="bio" style="display:none"></div>
+          <div class="logo-section" id="logoSection" style="display:none">
+            <img id="logoImg" src="" alt="Logo">
+          </div>
+        </div>
+      </div>
+      
+      <div class="actions">
+        <button class="action-btn secondary" onclick="toggleQrcode()">📱 二维码</button>
+        <button class="action-btn secondary" onclick="saveContact()">💾 保存联系人</button>
+        <button class="action-btn secondary" onclick="exportCard('image')">🖼️ 导出图片</button>
+        <button class="action-btn secondary" onclick="exportCard('pdf')">📄 导出PDF</button>
+      </div>
+      
+      <div class="qrcode-section" id="qrcodeSection">
+        <div class="qrcode-img" id="qrcodeImg"></div>
+        <div class="qrcode-tip">扫码查看电子名片</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const templateStyles = {
+      classic: { bg: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', iconBg: '#667eea' },
+      modern: { bg: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)', iconBg: '#11998e' },
+      elegant: { bg: 'linear-gradient(135deg, #2c3e50 0%, #4a5568 100%)', iconBg: '#2c3e50' },
+      warm: { bg: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', iconBg: '#f5576c' },
+      ocean: { bg: 'linear-gradient(135deg, #0093E9 0%, #80D0C7 100%)', iconBg: '#0093E9' },
+      sunset: { bg: 'linear-gradient(135deg, #FA8BFF 0%, #2BD2FF 50%, #2BFF88 100%)', iconBg: '#FA8BFF' }
+    };
+
+    let currentCard = null;
+
+    function getSlug() {
+      const path = window.location.pathname;
+      const match = path.match(/\/card\/([^/]+)/);
+      return match ? match[1] : null;
+    }
+
+    async function loadCard() {
+      const slug = getSlug();
+      if (!slug) {
+        showError();
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/cards/' + slug);
+        if (!res.ok) {
+          showError();
+          return;
+        }
+        
+        const data = await res.json();
+        currentCard = data.card;
+        renderCard(data.card);
+        loadQrcode(slug);
+        
+        const exportType = getExportParam();
+        if (exportType) {
+          setTimeout(() => exportCard(exportType), 500);
+        }
+      } catch (err) {
+        showError();
+      }
+    }
+
+    function showError() {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('error').style.display = 'block';
+    }
+
+    function renderCard(card) {
+      const style = templateStyles[card.template] || templateStyles.classic;
+      
+      document.getElementById('cardHeader').style.background = style.bg;
+      document.getElementById('cardContent').style.display = 'block';
+      document.getElementById('loading').style.display = 'none';
+
+      document.title = card.name + ' - 电子名片';
+
+      if (card.avatar) {
+        document.getElementById('avatarImg').src = '/uploads/' + card.avatar;
+        document.getElementById('avatarImg').style.display = 'block';
+        document.getElementById('avatarText').style.display = 'none';
+      } else {
+        document.getElementById('avatarText').textContent = card.name.charAt(0);
+      }
+
+      document.getElementById('name').textContent = card.name;
+      document.getElementById('position').textContent = card.position || '';
+      document.getElementById('company').textContent = card.company || '';
+
+      const infoList = document.getElementById('infoList');
+      let infoHtml = '';
+
+      if (card.phone) {
+        infoHtml += `<a class="info-item" href="tel:${card.phone}">
+          <div class="info-icon" style="background:${style.iconBg}">📱</div>
+          <div>
+            <div class="info-label">手机</div>
+            <div class="info-value">${card.phone}</div>
+          </div>
+        </a>`;
+      }
+
+      if (card.email) {
+        infoHtml += `<a class="info-item" href="mailto:${card.email}">
+          <div class="info-icon" style="background:${style.iconBg}">📧</div>
+          <div>
+            <div class="info-label">邮箱</div>
+            <div class="info-value">${card.email}</div>
+          </div>
+        </a>`;
+      }
+
+      if (card.wechat) {
+        infoHtml += `<div class="info-item">
+          <div class="info-icon" style="background:${style.iconBg}">💬</div>
+          <div>
+            <div class="info-label">微信</div>
+            <div class="info-value">${card.wechat}</div>
+          </div>
+        </div>`;
+      }
+
+      if (card.address) {
+        infoHtml += `<div class="info-item">
+          <div class="info-icon" style="background:${style.iconBg}">📍</div>
+          <div>
+            <div class="info-label">地址</div>
+            <div class="info-value">${card.address}</div>
+          </div>
+        </div>`;
+      }
+
+      infoList.innerHTML = infoHtml;
+
+      if (card.bio) {
+        const bioEl = document.getElementById('bio');
+        bioEl.textContent = card.bio;
+        bioEl.style.display = 'block';
+      }
+
+      if (card.logo) {
+        document.getElementById('logoImg').src = '/uploads/' + card.logo;
+        document.getElementById('logoSection').style.display = 'block';
+      }
+    }
+
+    async function loadQrcode(slug) {
+      try {
+        const res = await fetch('/api/cards/' + slug + '/qrcode');
+        const data = await res.json();
+        document.getElementById('qrcodeImg').innerHTML = `<img src="${data.qrcode}">`;
+      } catch (err) {}
+    }
+
+    function toggleQrcode() {
+      const section = document.getElementById('qrcodeSection');
+      section.classList.toggle('show');
+    }
+
+    function saveContact() {
+      if (!currentCard) return;
+      
+      const vcard = [
+        'BEGIN:VCARD',
+        'VERSION:3.0',
+        'N:' + currentCard.name,
+        'FN:' + currentCard.name,
+        currentCard.position ? 'TITLE:' + currentCard.position : '',
+        currentCard.company ? 'ORG:' + currentCard.company : '',
+        currentCard.phone ? 'TEL:' + currentCard.phone : '',
+        currentCard.email ? 'EMAIL:' + currentCard.email : '',
+        currentCard.address ? 'ADR:' + currentCard.address : '',
+        'END:VCARD'
+      ].filter(Boolean).join('\n');
+
+      const blob = new Blob([vcard], { type: 'text/vcard' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = currentCard.name + '.vcf';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    async function exportCard(type) {
+      const cardEl = document.getElementById('cardElement');
+      if (!cardEl) return;
+      
+      try {
+        const canvas = await html2canvas(cardEl, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: '#ffffff'
+        });
+        
+        if (type === 'image') {
+          const link = document.createElement('a');
+          link.download = currentCard.name + '-名片.png';
+          link.href = canvas.toDataURL('image/png');
+          link.click();
+        } else if (type === 'pdf') {
+          const { jsPDF } = window.jspdf;
+          const pdf = new jsPDF({
+            orientation: 'portrait',
+            unit: 'px',
+            format: [canvas.width, canvas.height]
+          });
+          pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, canvas.width, canvas.height);
+          pdf.save(currentCard.name + '-名片.pdf');
+        }
+      } catch (err) {
+        console.error('导出失败:', err);
+        alert('导出失败: ' + err.message);
+      }
+    }
+
+    function getExportParam() {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('export');
+    }
+
+    loadCard();
+  </script>
+</body>
+</html>
