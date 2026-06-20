@@ -947,11 +947,27 @@ async function exportPreview(type) {
   
   try {
     showToast('正在生成...', 'info');
+    
+    const originalStyle = {
+      boxShadow: cardEl.style.boxShadow,
+      margin: cardEl.style.margin,
+      borderRadius: cardEl.style.borderRadius
+    };
+    
+    cardEl.style.boxShadow = 'none';
+    cardEl.style.margin = '0';
+    
     const canvas = await html2canvas(cardEl, {
       scale: 2,
       useCORS: true,
-      backgroundColor: '#ffffff'
+      backgroundColor: '#ffffff',
+      imageTimeout: 0,
+      removeContainer: true
     });
+    
+    cardEl.style.boxShadow = originalStyle.boxShadow;
+    cardEl.style.margin = originalStyle.margin;
+    cardEl.style.borderRadius = originalStyle.borderRadius;
     
     if (type === 'image') {
       const link = document.createElement('a');

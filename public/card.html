@@ -450,11 +450,24 @@
       if (!cardEl) return;
       
       try {
+        const originalStyle = {
+          boxShadow: cardEl.style.boxShadow,
+          margin: cardEl.style.margin
+        };
+        
+        cardEl.style.boxShadow = 'none';
+        cardEl.style.margin = '0';
+        
         const canvas = await html2canvas(cardEl, {
           scale: 2,
           useCORS: true,
-          backgroundColor: '#ffffff'
+          backgroundColor: '#ffffff',
+          imageTimeout: 0,
+          removeContainer: true
         });
+        
+        cardEl.style.boxShadow = originalStyle.boxShadow;
+        cardEl.style.margin = originalStyle.margin;
         
         if (type === 'image') {
           const link = document.createElement('a');
